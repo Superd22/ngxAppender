@@ -5,5 +5,8 @@
 <p>Everything happening in this dark grey box is happening inside the &lt;app-root&gt;&lt;/app-root&gt; component, like it would
     in any other app.<br /> Everything outside has been dynamically appened to the DOM. and behaves (mostly) like usual.</p>
 
-    <input type="text" [(ngModel)]="inputExample" placeholder="Input example" >
-    <button (click)="appendNewDemo()">Append a new input/output demo</button>
+<hr />
+<input type="text" [(ngModel)]="inputExample" placeholder="Input example">
+<button (click)="appendNewDemo()">Append a new input/output demo</button>
+<hr /> {{ demoService.counter }}
+<button (click)="appendNewDemoService()">Append a service binded demo component</button>

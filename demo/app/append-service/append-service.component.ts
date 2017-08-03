@@ -1,3 +1,4 @@
+import { SharedServiceExampleService } from './../shared-service-example/shared-service-example.service';
 import { Component, OnInit } from '@angular/core';
 
 @Component({
@@ -7,7 +8,11 @@ import { Component, OnInit } from '@angular/core';
 })
 export class AppendServiceComponent implements OnInit {
 
-  constructor() { }
+  public counter: number;
+
+  constructor(public service: SharedServiceExampleService) {
+    service.counterChange.subscribe((counter) => this.counter = counter);
+  }
 
   ngOnInit() {
   }
