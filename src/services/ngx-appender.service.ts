@@ -1,5 +1,5 @@
 import { DomComponentCacheService } from './dom-component-cache.service';
-import { Injectable, Injector, ApplicationRef, ComponentFactoryResolver, NgZone, Type, ComponentRef, ChangeDetectorRef } from '@angular/core';
+import { Injectable, Injector, ApplicationRef, ComponentFactoryResolver, NgZone, Type, ComponentRef, ChangeDetectorRef, SimpleChange } from '@angular/core';
 
 
 export interface NgxAppenderBinding {
@@ -65,7 +65,7 @@ export class NgxAppenderService {
     }
 
     private doBindingsWithComponent<T>(component: ComponentRef<T>, bindings: NgxAbbenderBindings) {
-        
+
         let watchers: Map<any, { targetProperty: string, property: string, setter: (value: any) => boolean }[]> = new Map();
         if (bindings) {
             Object.keys(bindings).map((propertyName) => {
@@ -74,10 +74,13 @@ export class NgxAppenderService {
                 if (!binding.object) throw "no object to bind to for " + propertyName;
 
                 // We want to bind to the object only
-                if (!binding.property) {
-                    component.instance[propertyName] = binding.object;
+                if (binding.property === undefined) {
+
+                    this.triggerChangeEventFor(component, propertyName, binding.object, true);
                 }
                 else {
+                    this.triggerChangeEventFor(component, propertyName, binding.object[binding.property], true);
+
                     let tuple = { targetProperty: propertyName, property: binding.property, setter: binding.object.__lookupSetter__(binding.property) };
                     if (!watchers.has(binding.object))
                         watchers.set(binding.object, [tuple]);
@@ -89,7 +92,7 @@ export class NgxAppenderService {
             });
 
             watchers.forEach((values, targetObj) => {
-                
+
                 (<any>component)._viewRef = component.injector.get(ChangeDetectorRef);
 
                 Object.defineProperty(Object.getPrototypeOf(targetObj), "_ngxAppenderWatcher", {
@@ -106,7 +109,7 @@ export class NgxAppenderService {
                             }
                             , setter = function (val) {
                                 if (oldTuple && oldTuple.setter) oldTuple.setter.call(targetObj, val);
-                                
+
                                 oldval = val;
 
                                 handler.call(this, val);
@@ -125,10 +128,12 @@ export class NgxAppenderService {
                     }
                 });
 
+
+                // For every possible changes
                 values.map((tuple) => {
+                    // Watch this change
                     targetObj._ngxAppenderWatcher(tuple.property, (val) => {
-                        component.instance[tuple.targetProperty] = val;
-                        component.changeDetectorRef.detectChanges();
+                        this.triggerChangeEventFor(component, tuple.targetProperty, val);
                     });
                 });
 
@@ -138,6 +143,19 @@ export class NgxAppenderService {
 
 
         }
+    }
+
+    private triggerChangeEventFor<T>(component: ComponentRef<T>, propertyName: string, newValue: any, firstChange?: boolean) {
+        if (component.instance[propertyName] === undefined && newValue !== undefined) firstChange = true;
+        if (component.instance[propertyName] === newValue) return;
+
+        let oldValue = component.instance[propertyName];
+        let change = new SimpleChange(oldValue, newValue, !!firstChange);
+
+        // update our instance
+        component.instance[propertyName] = newValue;
+
+        if ((<any>component.instance).ngOnChanges) return (<any>component.instance).ngOnChanges(change);
     }
 
     public destroyComponent<T>(component: ComponentRef<T>) {
